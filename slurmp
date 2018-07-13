@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+#
+# Utilities for running parameter sweeps on slurm
+
+import argparse
+import os
+import subprocess
+
+from itertools import product
+
+
+def product_dict(**kwargs):
+    keys = kwargs.keys()
+    vals = kwargs.values()
+    for instance in product(*vals):
+        yield dict(zip(keys, instance))
+
+
+def eval_bash_str(sh):
+    return subprocess.check_output(sh, shell=True)
+
+
+def generate_job(jid, params, jobstr, env, sbatch_args, outdir):
+    jname = 'job_{}'.format(jid)
+    with open(os.path.join(outdir, 'job_{}.sh'.format(jid)), 'w') as f:
+        f.write('#!/bin/bash\n\n')
+        f.write('#SBATCH -e slurm/logs/{}.%J.err'.format(jname))
+        f.write('#SBATCH -o slurm/logs/{}.%J.out'.format(jname))
+        f.write('#SBATCH -J {}'.format(jname))
+        for k, v in sbatch_args.items():
+            f.write('#SBATCH --{} {}\n'.format(k, v))
+        for k, v in env.items():
+            f.write('export {}={}\n'.format(k, eval_bash_str('echo '+v)))
+        for k, v in params.items():
+            f.write('export {}={}\n'.format(k, v))
+        f.write('\n{}\n'.format(jobstr))
+
+
+def generate_jobs(c, jobf='./job.sh', outdir='./slurm/jobs'):
+    jid = 0
+
+    with open(jobf, 'r') as f:
+        job_str = f.read()
+
+    for p in product_dict(c['params']):
+        generate_job(jid, p, job_str, c['env'], c['sbatch_args'], outdir)
+        jid += 1
+
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        '--config',
+        help='Path to parameter sweep configuration file.',
+        default='config.yaml'
+    )
+    parser.add_argument(
+        '--generate',
+        help='Generate jobs for given config.',
+        action='store_true'
+    )
+    parser.add_argument(
+        '--run',
+        help='Execute a bunch of jobs contained in job folder.',
+        action='store_true'
+    )
+
+    # TODO - assert:
+    #  * options dict is a dict of arrays
+    #  * 'nodes' is given
