@@ -3,9 +3,12 @@
 # Utilities for running parameter sweeps on slurm
 
 import argparse
+import errno
 import os
-import subprocess
+import sys
+import time
 
+from subprocess import check_output
 from itertools import product
 
 
@@ -16,35 +19,106 @@ def product_dict(**kwargs):
         yield dict(zip(keys, instance))
 
 
-def eval_bash_str(sh):
-    return subprocess.check_output(sh, shell=True)
-
-
-def generate_job(jid, params, jobstr, env, sbatch_args, outdir):
+def generate_job(jid, params, job_str, env, sbatch_args, job_dir, logs_dir):
     jname = 'job_{}'.format(jid)
-    with open(os.path.join(outdir, 'job_{}.sh'.format(jid)), 'w') as f:
+    fname = os.path.join(job_dir, 'job_{}'.format(jid))
+    with open(fname, 'w') as f:
         f.write('#!/bin/bash\n\n')
-        f.write('#SBATCH -e slurm/logs/{}.%J.err'.format(jname))
-        f.write('#SBATCH -o slurm/logs/{}.%J.out'.format(jname))
-        f.write('#SBATCH -J {}'.format(jname))
+        f.write('#SBATCH -e {}/{}.err\n'.format(logs_dir, jname))
+        f.write('#SBATCH -o {}/{}.out\n'.format(logs_dir, jname))
+        f.write('#SBATCH -J {}\n'.format(jname))
+        f.write('#SBATCH -N {}\n'.format(params['nodes']))
         for k, v in sbatch_args.items():
             f.write('#SBATCH --{} {}\n'.format(k, v))
         for k, v in env.items():
-            f.write('export {}={}\n'.format(k, eval_bash_str('echo '+v)))
+            v_eval = check_output('echo "' + v + '"', shell=True)
+            f.write('export {}={}\n'.format(k, v_eval))
         for k, v in params.items():
             f.write('export {}={}\n'.format(k, v))
-        f.write('\n{}\n'.format(jobstr))
+        f.write('\n{}\n'.format(job_str))
+    os.chmod(fname, 0755)
 
 
-def generate_jobs(c, jobf='./job.sh', outdir='./slurm/jobs'):
-    jid = 0
+def generate(c, job_file, job_dir, logs_dir):
+    # check required items
+    if not c.get('params', None):
+        print("Expecting 'params' element in configuration.")
+    if not c['params'].get('nodes', None):
+        print("Expecting 'params.nodes' element in configuration.")
 
-    with open(jobf, 'r') as f:
+    # check types
+    for k, v in c['params'].items():
+        if type(v) is not list:
+            print("Expecting only lists (arrays) in 'params' dictionary.")
+    for k, v in c.get('env', {}).items():
+        if type(v) is not str:
+            print("Expecting only strings as values in 'env' dictionary.")
+    for k, v in c.get('sbatch_args', {}).items():
+        if type(v) is not str:
+            print("Expecting only strings as values of 'sbatch_args' dict.")
+
+    jid = 1
+
+    with open(job_file, 'r') as f:
         job_str = f.read()
 
-    for p in product_dict(c['params']):
-        generate_job(jid, p, job_str, c['env'], c['sbatch_args'], outdir)
+    for p in list(product_dict(**c['params'])):
+        generate_job(jid, p, job_str, c['env'],
+                     c['sbatch_args'], job_dir, logs_dir)
         jid += 1
+
+
+def job_files(job_dir):
+    for f in os.path.listdir(job_dir):
+        if not os.path.isfile(f):
+            continue
+        yield f
+
+
+def run(job_dir):
+    for f in job_files(job_dir):
+        cmd = 'sbatch {}/{}'.format(job_dir, f)
+        check_output(cmd, shell=True)
+
+
+def wait(job_dir):
+    jobs_all = set(job_files(job_dir))
+    jobs_remain = set(jobs_all)
+    jobs_done = set()
+    jobs_fail = set()
+
+    done_state = 'CD'
+    fail_state = 'BF,CA,DL,F,NF,OOM,SE,ST,S,TO'
+
+    cmd = 'squeue --name {} --noheader --states {} | wc -l'
+
+    while (jobs_done | jobs_fail) != jobs_all:
+
+        for j in jobs_remain:
+
+            if int(check_output(cmd.format(j, done_state), shell=True)) == 1:
+                jobs_done.add(j)
+            elif int(check_output(cmd.format(j, fail_state), shell=True)) == 1:
+                jobs_fail.add(j)
+
+            time.sleep(120)
+
+        jobs_remain = (jobs_all - jobs_done) + (jobs_all - jobs_fail)
+
+    print('All jobs finished.')
+
+    if len(jobs_fail) != 0:
+        print('  WARNING: some jobs failed! Check logs folder')
+
+
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
 
 
 if __name__ == "__main__":
@@ -54,19 +128,75 @@ if __name__ == "__main__":
     parser.add_argument(
         '--config',
         help='Path to parameter sweep configuration file.',
-        default='config.yaml'
+        default='./slurm/sweep.py',
+        required=False
+    )
+    parser.add_argument(
+        '--job-file',
+        help='Job to be used in the generation of the sweep.',
+        default="./slurm/job.sh",
+        required=False
+    )
+    parser.add_argument(
+        '--job-dir',
+        help='Folder where job files are to be written.',
+        default="./slurm/jobs",
+        required=False
+    )
+    parser.add_argument(
+        '--logs-dir',
+        help='Folder where job logs are to be written.',
+        default="./slurm/logs",
+        required=False
     )
     parser.add_argument(
         '--generate',
-        help='Generate jobs for given config.',
+        help='Generate jobs for given parameter sweep config.',
+        required=False,
         action='store_true'
     )
     parser.add_argument(
         '--run',
-        help='Execute a bunch of jobs contained in job folder.',
+        help='Execute a bunch of SLURM jobs contained in the job folder.',
+        required=False,
+        action='store_true'
+    )
+    parser.add_argument(
+        '--no-wait',
+        required=False,
+        help='Do not wait for jobs and return after they have been submitted.',
         action='store_true'
     )
 
-    # TODO - assert:
-    #  * options dict is a dict of arrays
-    #  * 'nodes' is given
+    args = vars(parser.parse_args())
+
+    if not args['generate'] and not args['run']:
+        print("At least one of --generate or --run is required.")
+        sys.exit(1)
+
+    if args['no_wait'] and not args['run']:
+        print("The --no-wait flag works only when --run is given.")
+        sys.exit(1)
+
+    mkdir_p(args['job_dir'])
+
+    if args['generate']:
+        if not os.path.isfile(args['job_file']):
+            print('Looks like {} does not exist'.format(args['job_file']))
+            sys.exit(1)
+        if not os.path.isfile(args['config']):
+            print('Looks like {} does not exist'.format(args['config']))
+            sys.exit(1)
+
+        with open(args['config'], 'r') as f:
+            c = eval(f.read())
+
+        generate(c, args['job_file'], args['job_dir'], args['logs_dir'])
+
+    if args['run']:
+        run(args['job_dir'])
+
+        if args['no_wait']:
+            sys.exit(0)
+
+        wait(args['job_dir'])

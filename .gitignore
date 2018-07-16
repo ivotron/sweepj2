@@ -1,0 +1,4 @@
+*.sw?
+popper_logs
+popper_status
+example/slurm/jobs/
