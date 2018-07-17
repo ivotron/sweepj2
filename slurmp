@@ -69,7 +69,7 @@ def generate(c, job_file, job_dir, logs_dir):
 
 
 def job_files(job_dir):
-    for f in os.path.listdir(job_dir):
+    for f in os.listdir(job_dir):
         if not os.path.isfile(f):
             continue
         yield f
