@@ -3,13 +3,18 @@
 # Utilities for running parameter sweeps on slurm
 
 import argparse
+import datetime
 import errno
+import getpass
 import os
 import sys
 import time
 
 from subprocess import check_output
 from itertools import product
+
+ts = str(datetime.datetime.now()).split('.')[0]
+ts = ts.replace(' ', '').replace('-', '').replace(':', '')
 
 
 def product_dict(**kwargs):
@@ -20,8 +25,8 @@ def product_dict(**kwargs):
 
 
 def generate_job(jid, params, job_str, env, sbatch_args, job_dir, logs_dir):
-    jname = 'job_{}'.format(jid)
-    fname = os.path.join(job_dir, 'job_{}'.format(jid))
+    jname = 'job_{}_{}'.format(ts, jid)
+    fname = os.path.join(job_dir, jname)
     with open(fname, 'w') as f:
         f.write('#!/bin/bash\n\n')
         f.write('#SBATCH -e {}/{}.err\n'.format(logs_dir, jname))
@@ -30,38 +35,42 @@ def generate_job(jid, params, job_str, env, sbatch_args, job_dir, logs_dir):
         f.write('#SBATCH -N {}\n'.format(params['nodes']))
         for k, v in sbatch_args.items():
             f.write('#SBATCH --{} {}\n'.format(k, v))
+        f.write('')
         for k, v in env.items():
             v_eval = check_output('echo "' + v + '"', shell=True)
-            f.write('export {}={}\n'.format(k, v_eval))
+            f.write('export {}={}'.format(k, v_eval))
         for k, v in params.items():
             f.write('export {}={}\n'.format(k, v))
         f.write('\n{}\n'.format(job_str))
     os.chmod(fname, 0755)
 
 
+def info(msg):
+    print('[slurmp]: ' + msg)
+
+
 def generate(c, job_file, job_dir, logs_dir):
     # check required items
     if not c.get('params', None):
-        print("Expecting 'params' element in configuration.")
+        info("Expecting 'params' element in configuration.")
     if not c['params'].get('nodes', None):
-        print("Expecting 'params.nodes' element in configuration.")
+        info("Expecting 'params.nodes' element in configuration.")
 
     # check types
     for k, v in c['params'].items():
         if type(v) is not list:
-            print("Expecting only lists (arrays) in 'params' dictionary.")
+            info("Expecting only lists (arrays) in 'params' dictionary.")
     for k, v in c.get('env', {}).items():
         if type(v) is not str:
-            print("Expecting only strings as values in 'env' dictionary.")
+            info("Expecting only strings as values in 'env' dictionary.")
     for k, v in c.get('sbatch_args', {}).items():
         if type(v) is not str:
-            print("Expecting only strings as values of 'sbatch_args' dict.")
-
-    jid = 1
+            info("Expecting only strings as values of 'sbatch_args' dict.")
 
     with open(job_file, 'r') as f:
         job_str = f.read()
 
+    jid = 1
     for p in list(product_dict(**c['params'])):
         generate_job(jid, p, job_str, c['env'],
                      c['sbatch_args'], job_dir, logs_dir)
@@ -70,45 +79,58 @@ def generate(c, job_file, job_dir, logs_dir):
 
 def job_files(job_dir):
     for f in os.listdir(job_dir):
-        if not os.path.isfile(f):
+        if not os.path.isfile(os.path.join(job_dir, f)):
             continue
         yield f
 
 
 def run(job_dir):
     for f in job_files(job_dir):
-        cmd = 'sbatch {}/{}'.format(job_dir, f)
+        cmd = 'sbatch {}'.format(os.path.join(job_dir, f))
         check_output(cmd, shell=True)
+    info('Submitted jobs successfully!')
 
 
 def wait(job_dir):
     jobs_all = set(job_files(job_dir))
-    jobs_remain = set(jobs_all)
     jobs_done = set()
     jobs_fail = set()
 
     done_state = 'CD'
     fail_state = 'BF,CA,DL,F,NF,OOM,SE,ST,S,TO'
 
-    cmd = 'squeue --name {} --noheader --states {} | wc -l'
+    cmd = 'squeue --user {u} --name {j} --noheader --states {s} | wc -l'
+
+    u = getpass.getuser()
+
+    info('Waiting for jobs to finish.')
 
     while (jobs_done | jobs_fail) != jobs_all:
 
-        for j in jobs_remain:
+        jobs_remaining = (jobs_all - jobs_done) - jobs_fail
 
-            if int(check_output(cmd.format(j, done_state), shell=True)) == 1:
+        info('{} jobs remain in the queue'.format(len(jobs_remaining)))
+
+        for j in jobs_remaining:
+
+            s = done_state
+            if int(check_output(cmd.format(u=u, j=j, s=s), shell=True)) == 1:
+                info('Job {} finished successfully.'.format(j))
                 jobs_done.add(j)
-            elif int(check_output(cmd.format(j, fail_state), shell=True)) == 1:
+                continue
+
+            s = fail_state
+            if int(check_output(cmd.format(u=u, j=j, s=s), shell=True)) == 1:
+                info('Job {} finished (failed!)'.format(j))
                 jobs_fail.add(j)
 
             time.sleep(120)
 
-        jobs_remain = (jobs_all - jobs_done) + (jobs_all - jobs_fail)
-
-    print('All jobs finished.')
+    info('All jobs finished.')
 
     if len(jobs_fail) != 0:
-        print('  WARNING: some jobs failed! Check logs folder')
+        info('')
+        info('WARNING: some jobs failed! Check logs folder.')
 
 
 def mkdir_p(path):
