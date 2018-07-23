@@ -99,7 +99,8 @@ def wait(job_dir):
     done_state = 'CD'
     fail_state = 'BF,CA,DL,F,NF,OOM,SE,ST,S,TO'
 
-    cmd = 'squeue --user {u} --name {j} --noheader --states {s} | wc -l'
+    cmd_a = 'squeue --user {u} --name {j} --noheader | wc -l'
+    cmd_j = 'squeue --user {u} --name {j} --noheader --states {s} | wc -l'
 
     u = getpass.getuser()
 
@@ -114,13 +115,19 @@ def wait(job_dir):
         for j in jobs_remaining:
 
             s = done_state
-            if int(check_output(cmd.format(u=u, j=j, s=s), shell=True)) == 1:
+
+            if int(check_output(cmd_a.format(u=u, j=j, s=s), shell=True)) == 0:
+                info("Job {} finished (unknown state).".format(j))
+                jobs_done.add(j)
+                continue
+
+            if int(check_output(cmd_j.format(u=u, j=j, s=s), shell=True)) == 1:
                 info('Job {} finished successfully.'.format(j))
                 jobs_done.add(j)
                 continue
 
             s = fail_state
-            if int(check_output(cmd.format(u=u, j=j, s=s), shell=True)) == 1:
+            if int(check_output(cmd_j.format(u=u, j=j, s=s), shell=True)) == 1:
                 info('Job {} finished (failed!)'.format(j))
                 jobs_fail.add(j)
 
