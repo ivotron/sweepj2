@@ -91,53 +91,30 @@ def run(job_dir):
     info('Submitted jobs successfully!')
 
 
-def wait(job_dir):
+def wait(job_dir, sleep_length=120):
     jobs_all = set(job_files(job_dir))
     jobs_done = set()
-    jobs_fail = set()
 
-    done_state = 'CD'
-    fail_state = 'BF,CA,DL,F,NF,OOM,SE,ST,S,TO'
-
-    cmd_a = 'squeue --user {u} --name {j} --noheader | wc -l'
-    cmd_j = 'squeue --user {u} --name {j} --noheader --states {s} | wc -l'
+    cmd = 'squeue --user {u} --name {j} --noheader | wc -l'
 
     u = getpass.getuser()
 
     info('Waiting for jobs to finish.')
 
-    while (jobs_done | jobs_fail) != jobs_all:
+    while jobs_done != jobs_all:
 
-        jobs_remaining = (jobs_all - jobs_done) - jobs_fail
+        jobs_remaining = jobs_all - jobs_done
 
         info('{} jobs remain in the queue'.format(len(jobs_remaining)))
 
         for j in jobs_remaining:
+            time.sleep(float(sleep_length))
 
-            s = done_state
-
-            if int(check_output(cmd_a.format(u=u, j=j, s=s), shell=True)) == 0:
-                info("Job {} finished (unknown state).".format(j))
+            if int(check_output(cmd.format(u=u, j=j), shell=True)) == 0:
+                info("Job {} finished.".format(j))
                 jobs_done.add(j)
-                continue
-
-            if int(check_output(cmd_j.format(u=u, j=j, s=s), shell=True)) == 1:
-                info('Job {} finished successfully.'.format(j))
-                jobs_done.add(j)
-                continue
-
-            s = fail_state
-            if int(check_output(cmd_j.format(u=u, j=j, s=s), shell=True)) == 1:
-                info('Job {} finished (failed!)'.format(j))
-                jobs_fail.add(j)
-
-            time.sleep(120)
 
     info('All jobs finished.')
-
-    if len(jobs_fail) != 0:
-        info('')
-        info('WARNING: some jobs failed! Check logs folder.')
 
 
 def mkdir_p(path):
@@ -164,6 +141,12 @@ if __name__ == "__main__":
         '--job-file',
         help='Job to be used in the generation of the sweep.',
         default="./slurm/job.sh",
+        required=False
+    )
+    parser.add_argument(
+        '--sleep-length',
+        help='Number of seconds to sleep between checks of SLURM job state.',
+        default='30',
         required=False
     )
     parser.add_argument(
@@ -228,4 +211,4 @@ if __name__ == "__main__":
         if args['no_wait']:
             sys.exit(0)
 
-        wait(args['job_dir'])
+        wait(args['job_dir'], args['sleep_length'])
