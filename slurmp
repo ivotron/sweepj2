@@ -77,10 +77,11 @@ def generate(c, job_file, job_dir, logs_dir):
     for p in list(product_dict(**c['params'])):
         generate_job(jid, p, job_str, c['env'],
                      c['sbatch_args'], job_dir, logs_dir)
-        all_job_parameters.update({jid: p })
+        all_job_parameters.update({'job_{}_{}'.format(ts, jid): p})
         jid += 1
 
-    with open(os.path.join(job_dir, 'all_job_parameters'), 'wb') as f:
+    all_jobs_file = os.path.join(os.path.dirname(job_file), 'all_jobs_params')
+    with open(all_jobs_file, 'wb') as f:
         f.write(json.dumps(all_job_parameters, sort_keys=True, indent=4))
 
 
