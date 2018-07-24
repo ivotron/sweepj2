@@ -7,8 +7,8 @@ function check_output {
     test -d $1
     test $(ls -l $1 | wc -l) -eq 31
     cat $1/job_1 | grep "\-N 2"
-    cat $1/job_10 | grep "$2/job_10.out"
-    cat $1/job_30 | grep "RESULTS_FOLDER=$PWD/results"
+    cat $1/job_*_10 | grep "$2/job_*_10.out"
+    cat $1/job_*_30 | grep "RESULTS_FOLDER=$PWD/results"
 }
 
 # test default
