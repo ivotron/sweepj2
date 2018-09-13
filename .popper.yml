@@ -6,9 +6,11 @@ metadata:
 pipelines:
   ci:
     envs:
-    - host
+      host:
+        args: []
     path: ci/
     stages:
     - test-generate
-popperized:
-- github/popperized
+search_sources:
+- popperized
+version: 1

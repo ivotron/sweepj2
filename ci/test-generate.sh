@@ -6,9 +6,9 @@ export PATH=$PATH:$PWD/../
 function check_output {
     test -d $1
     test $(ls -l $1 | wc -l) -eq 31
-    cat $1/job_*_1 | grep "\-N 2"
-    cat $1/job_*_10 | grep "$2/job_*_10.out"
-    cat $1/job_*_30 | grep "RESULTS_FOLDER=$PWD/results"
+    cat $1/job_001_* | grep "\-N 1"
+    cat $1/job_010_* | grep "$2/job_010_.*\.out"
+    cat $1/job_030_* | grep "RESULTS_FOLDER=$PWD/results"
 }
 
 # test default
@@ -16,7 +16,7 @@ pushd ../example
 
 rm -rf slurm/jobs slurm/logs
 
-slurmp --generate
+slurmp generate
 
 check_output slurm/jobs
 popd
@@ -29,7 +29,7 @@ cp ../example/slurm/sweep.py /tmp/config.py
 
 pushd /tmp/test
 
-slurmp --generate \
+slurmp generate \
   --job-dir slurm-jobs \
   --logs-dir job-logs \
   --job-file ./job.sh \

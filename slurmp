@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import sys
+import time
 
 from subprocess import check_output
 from itertools import product
@@ -24,8 +25,7 @@ def product_dict(**kwargs):
         yield dict(zip(keys, instance))
 
 
-def generate_job(jid, params, job_str, env, sbatch_args, job_dir, logs_dir):
-    jname = 'job_{}_{}'.format(str(jid).zfill(3), job_name_suffix)
+def generate_job(jname, params, job_str, env, sbatch_args, job_dir, logs_dir):
     fname = os.path.join(job_dir, jname)
     with open(fname, 'w') as f:
         f.write('#!/bin/bash\n\n')
@@ -72,12 +72,11 @@ def generate(c, job_file, job_dir, logs_dir):
     with open(job_file, 'r') as f:
         job_str = f.read()
 
-    jid = 1
-    for p in list(product_dict(**c['params'])):
-        generate_job(jid, p, job_str, c['env'],
+    for jid, p in enumerate(list(product_dict(**c['params']))):
+        jname = 'job_{}_{}'.format(str(jid+1).zfill(3), job_name_suffix)
+        generate_job(jname, p, job_str, c['env'],
                      c['sbatch_args'], job_dir, logs_dir)
-        all_job_parameters.update({'job_{}_{}'.format(ts, jid): p})
-        jid += 1
+        all_job_parameters.update({jname: p})
 
     all_jobs_file = os.path.join(os.path.dirname(job_file), 'all_jobs_params')
     with open(all_jobs_file, 'wb') as f:
@@ -230,7 +229,7 @@ if __name__ == "__main__":
             print('ERROR: {} is empty'.format(args['job_dir']))
             sys.exit(1)
 
-        run(args['job_dir'], sequential['sequential'])
+        run(args['job_dir'], args['sequential'])
 
         if args['no_wait']:
             sys.exit(0)

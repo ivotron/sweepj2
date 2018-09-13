@@ -1,4 +1,6 @@
 *.sw?
+example/slurm/all_jobs_params
 popper_logs
 popper_status
 example/slurm/jobs/
+popper/
