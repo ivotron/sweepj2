@@ -1,0 +1,3 @@
+learning_rate: [ 0.3, 0.8 ]
+epoch: [ 20, 30 ]
+wn_grams: [ 2, 3 ]
