@@ -8,9 +8,9 @@ install:
 script:
 - ./sweepj2 --template example/script.sh --space example/space.yml
 - test 31 -eq $(ls -l ./sweepj2-output/ | wc -l)
-- cat ./sweepj2-output/008-20-0.5-3.sh | grep '-wordNgrams 3'
-- cat ./sweepj2-output/008-20-0.5-3.sh | grep '-epoch 20'
-- cat ./sweepj2-output/008-20-0.5-3.sh | grep '-lr 0.5'
-- cat ./sweepj2-output/030-30-0.8-5.sh | grep '-wordNgrams 5'
-- cat ./sweepj2-output/030-30-0.8-5.sh | grep '-epoch 30'
-- cat ./sweepj2-output/030-30-0.8-5.sh | grep '-lr 0.8'
+- cat ./sweepj2-output/008-20-0.5-3.sh | grep 'wordNgrams 3'
+- cat ./sweepj2-output/008-20-0.5-3.sh | grep 'epoch 20'
+- cat ./sweepj2-output/008-20-0.5-3.sh | grep 'lr 0.5'
+- cat ./sweepj2-output/030-30-0.8-5.sh | grep 'wordNgrams 5'
+- cat ./sweepj2-output/030-30-0.8-5.sh | grep 'epoch 30'
+- cat ./sweepj2-output/030-30-0.8-5.sh | grep 'lr 0.8'
