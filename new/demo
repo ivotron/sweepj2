@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import argparse
 import os
 import yaml
@@ -10,18 +9,18 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     '--template',
     help='',
-    default='./new/demo_script.sh',
+    default='./new/test/script.sh',
     required=False
 )
 parser.add_argument(
     '--space',
     help='Path to parameter space .',
-    default="./new/space.yml",
+    default="./new/test/config.yml",
     required=False
 )
 
-if not os.path.exists("./output"):
-    os.makedirs("./output")
+if not os.path.exists("./new/output"):
+    os.makedirs("./new/output")
 args = vars(parser.parse_args())
 ext = os.path.splitext(args['template'])[1]
 with open(args['template']) as temp:
@@ -43,12 +42,14 @@ kw = {}
 vals = []
 for k, v in sorted(dataMap.items()):
     vals.append(v)
+count = 0
 for comb in itertools.product(*vals):
     # print(zip(new_params, comb))
+    count += 1
     for tup in zip(new_params, comb):
         kw[tup[0]] = tup[1]
     # print(kw)
-    print("output/output-{}{}".format(comb, ext))
+    print("file://new/output/output_{}-{}{}".format(str(count).zfill(3), comb, ext))
     print(template.format(**kw))
-    with open("./output/output-{}{}".format(comb, ext), 'w') as f:
+    with open("./new/output/output_{}-{}{}".format(str(count).zfill(3), comb, ext), 'w') as f:
         f.write(template.format(**kw))
