@@ -8,20 +8,26 @@ import itertools
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--template',
-    help='',
-    default='./new/test/script.sh',
-    required=False
+    help='Jinja2 template file to use for the parameter sweep.',
+    required=True
 )
 parser.add_argument(
     '--space',
-    help='Path to parameter space .',
-    default="./new/test/config.yml",
+    help='Path to YAML file defining the parameter space.',
+    required=True
+)
+parser.add_argument(
+    '--output',
+    help='Path to YAML file defining the parameter space.',
+    default='./sweepj2-output',
     required=False
 )
 
-if not os.path.exists("./new/output"):
-    os.makedirs("./new/output")
 args = vars(parser.parse_args())
+
+if not os.path.exists(args['output']):
+    os.makedirs(args['output'])
+
 ext = os.path.splitext(args['template'])[1]
 with open(args['template']) as temp:
     template = temp.read()
@@ -29,7 +35,6 @@ with open(args['template']) as temp:
 
 with open(args['space']) as f:
     dataMap = yaml.safe_load(f)
-    # print(dataMap.items())
 
 params = re.findall(r'(?<={__).*?(?=__})', template)
 print(set(params))
@@ -37,19 +42,18 @@ params = list(set(params))
 params.sort()
 new_params = list(map(lambda x: "__" + x + "__", params))
 
-# print(new_params)
 kw = {}
 vals = []
 for k, v in sorted(dataMap.items()):
     vals.append(v)
 count = 0
 for comb in itertools.product(*vals):
-    # print(zip(new_params, comb))
     count += 1
     for tup in zip(new_params, comb):
         kw[tup[0]] = tup[1]
-    # print(kw)
-    print("file://new/output/output_{}-{}{}".format(str(count).zfill(3), comb, ext))
+    outfile = "{}".format(comb).replace(', ', '-').replace('(', '').replace(')', '')
+    outfile = "{}/{}-{}{}". format(args['output'], str(count).zfill(3), outfile, ext)
+    print(outfile)
     print(template.format(**kw))
-    with open("./new/output/output_{}-{}{}".format(str(count).zfill(3), comb, ext), 'w') as f:
+    with open(outfile, 'w') as f:
         f.write(template.format(**kw))
