@@ -5,7 +5,6 @@ import os
 import yaml
 import re
 import itertools
-from subprocess import check_output
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -30,11 +29,12 @@ with open(args['template']) as temp:
     print(template)
 
 with open(args['space']) as f:
-    # use safe_load instead load
     dataMap = yaml.safe_load(f)
-
     # print(dataMap.items())
+
 params = re.findall(r'(?<={__).*?(?=__})', template)
+print(set(params))
+params = list(set(params))
 params.sort()
 new_params = list(map(lambda x: "__" + x + "__", params))
 
@@ -48,6 +48,7 @@ for comb in itertools.product(*vals):
     for tup in zip(new_params, comb):
         kw[tup[0]] = tup[1]
     # print(kw)
+    print("output/output-{}{}".format(comb, ext))
     print(template.format(**kw))
-    with open("./output/output-{}{}".format(comb, ext), 'a') as f:
+    with open("./output/output-{}{}".format(comb, ext), 'w') as f:
         f.write(template.format(**kw))

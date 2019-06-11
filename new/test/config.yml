@@ -1,0 +1,3 @@
+nodes: [2, 4, 8, 16, 32]
+test: ['sgd', 'k-means', 'terasort']
+reps: [ 10, 100 ]
