@@ -4,3 +4,7 @@ popper_logs
 popper_status
 example/slurm/jobs/
 popper/
+slurm/jobs/
+.idea/
+new/output/
+sweepj2-output
