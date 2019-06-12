@@ -1,9 +1,11 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import argparse
 import os
 import yaml
 import re
 import itertools
+from jinja2 import Template
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -31,16 +33,22 @@ if not os.path.exists(args['output']):
 ext = os.path.splitext(args['template'])[1]
 with open(args['template']) as temp:
     template = temp.read()
-    print(template)
+print(template)
+params = re.findall(r'(?<={{).*?(?=}})', template)
+params = list(set(params))
+params.sort()
+print(params)
+template = Template(template)
 
 with open(args['space']) as f:
     dataMap = yaml.safe_load(f)
 
-params = re.findall(r'(?<={__).*?(?=__})', template)
-print(set(params))
-params = list(set(params))
-params.sort()
-new_params = list(map(lambda x: "__" + x + "__", params))
+# params = re.findall(r'(?<={{).*?(?=}})', template)
+# print(set(params))
+# params = list(set(params))
+# print(params)
+# params.sort()
+# new_params = list(map(lambda x: "__" + x + "__", params))
 
 kw = {}
 vals = []
@@ -49,11 +57,22 @@ for k, v in sorted(dataMap.items()):
 count = 0
 for comb in itertools.product(*vals):
     count += 1
-    for tup in zip(new_params, comb):
-        kw[tup[0]] = tup[1]
+    for tup in zip(params, comb):
+        kw[tup[0].strip()] = tup[1]
     outfile = "{}".format(comb).replace(', ', '-').replace('(', '').replace(')', '')
-    outfile = "{}/{}-{}{}". format(args['output'], str(count).zfill(3), outfile, ext)
+    outfile = "{}/{}-{}{}".format(args['output'], str(count).zfill(3), outfile, ext)
     print(outfile)
-    print(template.format(**kw))
+    print(template.render(**kw))
     with open(outfile, 'w') as f:
-        f.write(template.format(**kw))
+        f.write(template.render(**kw))
+
+# count = 0
+# for comb in itertools.product(*vals):
+#     count += 1
+    # for tup in zip(new_params, comb):
+    #     kw[tup[0]] = tup[1]
+    # outfile = "{}".format(comb).replace(', ', '-').replace('(', '').replace(')', '')
+    # outfile = "{}/{}-{}{}". format(args['output'], str(count).zfill(3), outfile, ext)
+    # print(outfile)
+    # template.render(**kw)
+    # print(template.format(**kw))

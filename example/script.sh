@@ -1,1 +1,1 @@
-./fasttext supervised -input cooking.train -output model_cooking -wordNgrams {__wn_grams__} -lr {__learning_rate__} -epoch {__epoch__}
+./fasttext supervised -input cooking.train -output model_cooking -wordNgrams {{ wn_grams }} -lr {{ learning_rate }} -epoch {{ epoch }}

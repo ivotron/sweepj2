@@ -5,7 +5,7 @@ python:
 - "2.7"
 - "3.7"
 install:
-- pip install pyyaml
+- pip install pyyaml Jinja2
 script:
 - ./sweepj2 --template example/script.sh --space example/space.yml
 - test 31 -eq $(ls -l ./sweepj2-output/ | wc -l)
