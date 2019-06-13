@@ -5,9 +5,9 @@ python:
 - "2.7"
 - "3.7"
 install:
-- pip install pyyaml Jinja2
+- pip install .
 script:
-- ./sweepj2/sweepj2 --template example/script.sh --space example/space.yml
+- sweepj2 --template example/script.sh --space example/space.yml
 - test 31 -eq $(ls -l ./sweepj2-output/ | wc -l)
 - cat ./sweepj2-output/008-20-0.5-3.sh | grep 'wordNgrams 3'
 - cat ./sweepj2-output/008-20-0.5-3.sh | grep 'epoch 20'

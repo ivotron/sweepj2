@@ -20,7 +20,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--output',
-    help='Path to YAML file defining the parameter space.',
+    help='Path to output directory',
     default='./sweepj2-output',
     required=False
 )
@@ -29,30 +29,24 @@ args = vars(parser.parse_args())
 
 if not os.path.exists(args['output']):
     os.makedirs(args['output'])
-
+pwd = os.getcwd()
 ext = os.path.splitext(args['template'])[1]
+if not os.path.isfile(args['template']):
+    print("ERROR: File {} does not exist".format(os.path.join(pwd, args['template'])))
+    exit(1)
+
 with open(args['template']) as temp:
     template = temp.read()
-print(template)
-params = re.findall(r'(?<={{).*?(?=}})', template)
-params = list(set(params))
-params.sort()
-print(params)
+
 template = Template(template)
 
 with open(args['space']) as f:
     dataMap = yaml.safe_load(f)
-
-# params = re.findall(r'(?<={{).*?(?=}})', template)
-# print(set(params))
-# params = list(set(params))
-# print(params)
-# params.sort()
-# new_params = list(map(lambda x: "__" + x + "__", params))
-
 kw = {}
+params = []
 vals = []
 for k, v in sorted(dataMap.items()):
+    params.append(k)
     vals.append(v)
 count = 0
 for comb in itertools.product(*vals):
@@ -61,18 +55,7 @@ for comb in itertools.product(*vals):
         kw[tup[0].strip()] = tup[1]
     outfile = "{}".format(comb).replace(', ', '-').replace('(', '').replace(')', '')
     outfile = "{}/{}-{}{}".format(args['output'], str(count).zfill(3), outfile, ext)
-    print(outfile)
-    print(template.render(**kw))
+    # print(outfile)
+    # print(template.render(**kw))
     with open(outfile, 'w') as f:
         f.write(template.render(**kw))
-
-# count = 0
-# for comb in itertools.product(*vals):
-#     count += 1
-    # for tup in zip(new_params, comb):
-    #     kw[tup[0]] = tup[1]
-    # outfile = "{}".format(comb).replace(', ', '-').replace('(', '').replace(')', '')
-    # outfile = "{}/{}-{}{}". format(args['output'], str(count).zfill(3), outfile, ext)
-    # print(outfile)
-    # template.render(**kw)
-    # print(template.format(**kw))
