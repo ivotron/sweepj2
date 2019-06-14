@@ -3,7 +3,6 @@
 import argparse
 import os
 import yaml
-import re
 import itertools
 from jinja2 import Template
 
@@ -29,10 +28,9 @@ args = vars(parser.parse_args())
 
 if not os.path.exists(args['output']):
     os.makedirs(args['output'])
-pwd = os.getcwd()
 ext = os.path.splitext(args['template'])[1]
 if not os.path.isfile(args['template']):
-    print("ERROR: File {} does not exist".format(os.path.join(pwd, args['template'])))
+    print("ERROR: File {} does not exist".format(os.path.join(args['template'])))
     exit(1)
 
 with open(args['template']) as temp:
@@ -55,7 +53,5 @@ for comb in itertools.product(*vals):
         kw[tup[0].strip()] = tup[1]
     outfile = "{}".format(comb).replace(', ', '-').replace('(', '').replace(')', '')
     outfile = "{}/{}-{}{}".format(args['output'], str(count).zfill(3), outfile, ext)
-    # print(outfile)
-    # print(template.render(**kw))
     with open(outfile, 'w') as f:
         f.write(template.render(**kw))
