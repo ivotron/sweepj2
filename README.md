@@ -7,8 +7,7 @@ Utilities for running parameter sweeps by providing a Jinja2 template and a para
 
 ## Installation
 ```bash
-git clone https://github.com/ivotron/sweepj2 /tmp/sweep2
-pip install /tmp/sweepj2/bin
+pip install sweepj2
 ```
 
 ## Usage
