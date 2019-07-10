@@ -25,7 +25,12 @@ parser.add_argument(
     required=False
 )
 
-parser.add_argument('--make-executable', dest='make-executable', action='store_true')
+parser.add_argument(
+    '--make-executable', 
+    help="Makes output files executable.",
+    dest='make-executable', 
+    action='store_true'
+)
 parser.set_defaults(feature=False)
 args = vars(parser.parse_args())
 
@@ -54,8 +59,9 @@ for comb in itertools.product(*vals):
     count += 1
     for tup in zip(params, comb):
         kw[tup[0].strip()] = tup[1]
+    filename = os.path.basename(args['template'])
     outfile = "{}".format(comb).replace(', ', '-').replace('(', '').replace(')', '')
-    outfile = "{}/{}-{}{}".format(args['output'], str(count).zfill(3), outfile, ext)
+    outfile = "{}/{}-{}-{}{}".format(args['output'],os.path.splitext(filename)[0], str(count).zfill(3), outfile, ext)
     with open(outfile, 'w') as f:
         f.write(template.render(**kw))
     if args['make-executable']:
