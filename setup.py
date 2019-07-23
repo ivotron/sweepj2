@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='sweepj2',
-    version='1.0',
+    version='1.1.0',
     author='The Popper Development Team',
     author_email='ivo@cs.ucsc.edu',
     url='https://github.com/ivotron/sweepj2',
