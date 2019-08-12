@@ -14,7 +14,7 @@ pip install sweepj2
 Here's is an example script with three variables, viz. `wn_grams`, `learning_rate` and `epoch`.
 
 ```bash
-# script.sh
+# script.j2
 ./fasttext supervised -input cooking.train -output model_cooking \
     -wordNgrams {{ wn_grams }} \
     -lr {{ learning_rate }} \
@@ -32,7 +32,9 @@ wn_grams: [1, 2, 3, 4, 5 ]
 
 You can generate the scripts with all the possible combinations from the YAML file by doing:
 ```bash 
-sweepj2 --template path/to/script.sh --space path/to/space.yml
+sweepj2 --template path/to/script.j2 --space path/to/space.yml --make-executable
 ```
 
 You will find the generated scripts in `./sweepj2-output` directory, or you could mention the directory to save the files by using `--output` flag.
+
+`make-executable` makes the resulting files executable. It can be skiped if you don't want the files executable.
